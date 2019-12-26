@@ -184,8 +184,8 @@ func (job *BulkUpdateJob) addRequesterFieldToFile(combinedFileContents string, s
 }
 
 func (job *BulkUpdateJob) loadBulkUpdateFiles() (combinedFileContents string, filePath string, err error) {
-	filePath = fmt.Sprintf("%s/bulk_updates", job.appconfig.PDEPath())
-	var finishedFilePath = fmt.Sprintf("%s/bulk_updates/finished", job.appconfig.PDEPath())
+	filePath = fmt.Sprintf("%s/bulk_updates", job.appconfig.AegisPath())
+	var finishedFilePath = fmt.Sprintf("%s/bulk_updates/finished", job.appconfig.AegisPath())
 
 	for index := range job.Payload.Filenames {
 		var currentFile = job.Payload.Filenames[index]
