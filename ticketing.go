@@ -970,7 +970,7 @@ func (ticketing *TicketingJob) payloadToTicket(payload *vulnerabilityPayload) (n
 		var operatingSystem = ticketing.gatherOSDropdown(payload.device.OS())
 
 		// TODO make configurable
-		var summary = fmt.Sprintf("VRR (%s - %s): %s", ips, hosts, payload.vuln.Name())
+		var summary = fmt.Sprintf("Aegis (%s - %s): %s", ips, hosts, payload.vuln.Name())
 
 		var template *scaffold.Template
 		template = scaffold.NewTemplateEmpty()
