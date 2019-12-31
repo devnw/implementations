@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/nortonlifelock/domain"
 	"github.com/nortonlifelock/integrations"
 	"github.com/nortonlifelock/log"
+	"github.com/pkg/errors"
 )
 
 // RescanPayload is used to parse the Payload from the job history table. The Payload is generated automatically from the rescan queue job which creates the

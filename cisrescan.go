@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/nortonlifelock/domain"
-	"github.com/nortonlifelock/jira"
 	"github.com/nortonlifelock/integrations"
+	"github.com/nortonlifelock/jira"
 	"github.com/nortonlifelock/log"
 )
 

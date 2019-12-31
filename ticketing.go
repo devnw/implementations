@@ -10,13 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/nortonlifelock/database/dal"
 	"github.com/nortonlifelock/domain"
-	"github.com/nortonlifelock/jira"
 	"github.com/nortonlifelock/integrations"
+	"github.com/nortonlifelock/jira"
 	"github.com/nortonlifelock/log"
 	"github.com/nortonlifelock/scaffold"
+	"github.com/pkg/errors"
 )
 
 // TicketingPayload decides which asset groups to ticket on, as well as defining the min date which is used to calculate the SLA if the calculated
