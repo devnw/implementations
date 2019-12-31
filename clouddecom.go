@@ -3,14 +3,15 @@ package implementations
 import (
 	"context"
 	"fmt"
-	"github.com/nortonlifelock/domain"
-	"github.com/nortonlifelock/jira"
-	"github.com/nortonlifelock/integrations"
-	"github.com/nortonlifelock/log"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/nortonlifelock/domain"
+	"github.com/nortonlifelock/integrations"
+	"github.com/nortonlifelock/jira"
+	"github.com/nortonlifelock/log"
 )
 
 // CloudDecommissionJob pulls a history of tracked assets from the database and compares that to a list of live assets as reported
@@ -192,7 +193,7 @@ func (job *CloudDecommissionJob) findIncorrectlyDecommissionedAssets(deviceIDToD
 					)
 
 					if err == nil {
-						job.lstream.Send(log.Warningf(err, "[%v] was marked as decommissioned but was found in the live asset inventory"))
+						job.lstream.Send(log.Warningf(err, "[%v] was marked as decommissioned but was found in the live asset inventory", deviceID))
 					} else {
 						job.lstream.Send(log.Errorf(err, "error while deleting decommission entry for falsely decommissioned asset [%v]", deviceID))
 					}
