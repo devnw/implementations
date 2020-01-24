@@ -134,7 +134,7 @@ func (job *CloudSyncJob) createOrUpdateTagsForDevice(keyToValue map[string]strin
 					if err == nil {
 						job.lstream.Send(log.Infof("Created tag [%s|%s] for device [%v]", tagKey, tagValue, device.SourceID()))
 					} else {
-						job.lstream.Send(log.Errorf(err, "error while creating tag for device [%v]", device.SourceID()))
+						job.lstream.Send(log.Errorf(err, "error while creating tag for device [%v]", sord(device.SourceID())))
 					}
 
 				} else {
@@ -143,7 +143,7 @@ func (job *CloudSyncJob) createOrUpdateTagsForDevice(keyToValue map[string]strin
 						if err == nil {
 							job.lstream.Send(log.Infof("Updated tag [%s|%s] for device [%v]", tagKey, tagValue, device.SourceID()))
 						} else {
-							job.lstream.Send(log.Errorf(err, "error while updating tag for device [%v]", device.SourceID()))
+							job.lstream.Send(log.Errorf(err, "error while updating tag for device [%v]", sord(device.SourceID())))
 						}
 					}
 				}

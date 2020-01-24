@@ -229,7 +229,7 @@ func (job *RescanQueueJob) createJobHistoryForRescanJob(bjob domain.JobRegistrat
 	if bjob != nil {
 
 		var configs []domain.JobConfig
-		if configs, err = job.db.GetJobConfigByOrgIDAndJobID(job.config.OrganizationID(), bjob.ID()); err == nil {
+		if configs, err = job.db.GetJobConfigByOrgIDAndJobIDWithSC(job.config.OrganizationID(), bjob.ID(), job.outsource.ID()); err == nil { // here we pass the scanner source id so the spawned rescan job uses the same scanner (for the case of an organization using multiple scanners)
 
 			if configs != nil && len(configs) > 0 && configs[0] != nil {
 

@@ -43,7 +43,7 @@ func (job *ScanSyncJob) Process(ctx context.Context, id string, appconfig domain
 			var baseJob domain.JobRegistration
 			if baseJob, err = job.getBaseJob(); err == nil {
 				var unfinishedScans []domain.ScanSummary
-				unfinishedScans, err = job.db.GetUnfinishedScanSummariesBySourceOrgID(job.insource.SourceID(), job.config.OrganizationID())
+				unfinishedScans, err = job.db.GetUnfinishedScanSummariesBySourceConfigOrgID(job.insource.ID(), job.config.OrganizationID())
 
 				if err == nil {
 					if unfinishedScans != nil && len(unfinishedScans) > 0 {
@@ -118,7 +118,8 @@ func (job *ScanSyncJob) createScanCloseJob(scan domain.Scan, correspondingScanSu
 	if baseJob != nil {
 
 		var configs []domain.JobConfig
-		if configs, err = job.db.GetJobConfigByOrgIDAndJobID(job.config.OrganizationID(), baseJob.ID()); err == nil {
+		// here we pass the scanner source id so the spawned rescan job uses the same scanner (for the case of an organization using multiple scanners)
+		if configs, err = job.db.GetJobConfigByOrgIDAndJobIDWithSC(job.config.OrganizationID(), baseJob.ID(), job.insource.ID()); err == nil {
 
 			if configs != nil && len(configs) > 0 && configs[0] != nil {
 

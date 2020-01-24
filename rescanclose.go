@@ -110,7 +110,8 @@ func (scanClose *ScanCloseJob) processScanDetections(engine integrations.Ticketi
 	var payload []byte
 	if payload, err = scanClosePayloadToScanPayload(scan.ScanClosePayload()); err == nil {
 		var detections <-chan domain.Detection
-		if detections, err = vscanner.ScanResults(scanClose.ctx, payload); err == nil {
+		var deadHostIPToProof <-chan domain.KeyValue
+		if detections, deadHostIPToProof, err = vscanner.ScanResults(scanClose.ctx, payload); err == nil {
 
 			// first gather all detections from the scan results
 			wg := &sync.WaitGroup{}
@@ -154,6 +155,22 @@ func (scanClose *ScanCloseJob) processScanDetections(engine integrations.Ticketi
 			}()
 			wg.Wait()
 
+			var deadHostIPToProofMap = make(map[string]string)
+			func() {
+				for {
+					select {
+					case <-scanClose.ctx.Done():
+						return
+					case deadHost, ok := <-deadHostIPToProof:
+						if ok {
+							deadHostIPToProofMap[deadHost.Key()] = deadHost.Value()
+						} else {
+							return
+						}
+					}
+				}
+			}()
+
 			for _, ticket := range tickets {
 				if devDetectionMap[ticket.DeviceID()] != nil {
 
@@ -173,7 +190,43 @@ func (scanClose *ScanCloseJob) processScanDetections(engine integrations.Ticketi
 					}(ticket, devDetectionMap[ticket.DeviceID()][ticket.VulnerabilityID()])
 
 				} else {
-					scanClose.lstream.Send(log.Errorf(err, "scan did not seem to cover the device %v", ticket.DeviceID()))
+					// This block hits if the device did not show up in the scan results. This means the device is either dead, or there were no vulnerabilities found on the device/there was an error in the scan
+
+					wg.Add(1)
+					go func(ticket domain.Ticket) {
+						defer handleRoutinePanic(scanClose.lstream)
+						defer wg.Done()
+
+						// The device appears to be dead
+						if len(deadHostIPToProofMap[sord(ticket.IPAddress())]) > 0 {
+							if len(sord(ticket.IPAddress())) > 0 {
+								if strings.ToLower(scanClose.Payload.Type) == strings.ToLower(domain.RescanDecommission) {
+									err = scanClose.closeTicket(engine, ticket, scan, engine.GetStatusMap(jira.StatusClosedDecommissioned), deadHostIPToProofMap[sord(ticket.IPAddress())])
+									if err != nil {
+										scanClose.lstream.Send(log.Errorf(err, "error while closing dead host ticket", ticket.Title()))
+									}
+								} else {
+									scanClose.lstream.Send(log.Infof("the device for %s seems to be dead, but this is not a decommission scan", ticket.Title()))
+									err = engine.Transition(ticket, engine.GetStatusMap(jira.StatusResolvedDecom), fmt.Sprintf("Device is offline. Moving it to a resolved decommission status so a scanner can confirm\nPROOF:\n%s", deadHostIPToProofMap[sord(ticket.IPAddress())]), sord(ticket.AssignedTo()))
+									if err != nil {
+										scanClose.lstream.Send(log.Errorf(err, "error while adding comment to ticket %s", ticket.Title()))
+									}
+								}
+							}
+
+							// There were no vulnerabilities found on the device or the scan failed to scan the device.
+						} else {
+							// TODO I believe this block will hit if no vulnerabilities are found on the device
+							scanClose.lstream.Send(log.Errorf(err, "scan [%s] did not seem to cover the device %v", scanClose.Payload.ScanID, ticket.DeviceID()))
+
+							//err = engine.Transition(ticket, engine.GetStatusMap(jira.StatusScanError), fmt.Sprintf("scan [%s] did not seem to cover the device %v", scanClose.Payload.ScanID, ticket.DeviceID()), sord(ticket.AssignedTo()))
+							//if err != nil {
+							//	scanClose.lstream.Send(log.Errorf(err, "error while adding comment to ticket [%s]", ticket.Title()))
+							//}
+
+							_, _, _ = engine.UpdateTicket(ticket, fmt.Sprintf("scan [%s] did not cover the device %v", scanClose.Payload.ScanID, ticket.DeviceID()))
+						}
+					}(ticket)
 				}
 			}
 			wg.Wait()
@@ -210,7 +263,7 @@ func (scanClose *ScanCloseJob) modifyJiraTicketAccordingToVulnerabilityStatus(en
 				scanClose.lstream.Send(log.Errorf(err, "Error while closing Ticket [%s]", ticket.Title()))
 			}
 		} else {
-			scanClose.lstream.Send(log.Info(fmt.Sprintf("Ticket [%s] reopened as host appears to be alive", ticket.Title())))
+			scanClose.lstream.Send(log.Info(fmt.Sprintf("Ticket [%s] reopened as host is alive", ticket.Title())))
 			if err = scanClose.openTicket(ticket, detection, scan, engine); err != nil {
 				scanClose.lstream.Send(log.Errorf(err, "Error while opening Ticket [%s]", ticket.Title()))
 			}
@@ -220,7 +273,7 @@ func (scanClose *ScanCloseJob) modifyJiraTicketAccordingToVulnerabilityStatus(en
 	} else if status == domain.Vulnerable {
 
 		if scanClose.shouldOpenTicket(engine, sord(ticket.Status()), scanClose.Payload.Type) {
-			scanClose.lstream.Send(log.Debugf("Vulnerability STILL EXISTS, re-opening Ticket [%s]", ticket.Title()))
+			scanClose.lstream.Send(log.Infof("Vulnerability STILL EXISTS, re-opening Ticket [%s]", ticket.Title()))
 			if err = scanClose.openTicket(ticket, detection, scan, engine); err != nil {
 				scanClose.lstream.Send(log.Errorf(err, "Error while opening Ticket [%s]", ticket.Title()))
 			}
@@ -241,6 +294,11 @@ func (scanClose *ScanCloseJob) modifyJiraTicketAccordingToVulnerabilityStatus(en
 			closeReason := fmt.Sprintf("Device found to be dead by Scanner\n%v", detection.Proof())
 			if err = scanClose.closeTicket(engine, ticket, scan, engine.GetStatusMap(jira.StatusClosedDecommissioned), closeReason); err != nil {
 				scanClose.lstream.Send(log.Errorf(err, "Error while closing Ticket [%s]", ticket.Title()))
+			}
+		} else {
+			err = engine.Transition(ticket, engine.GetStatusMap(jira.StatusResolvedDecom), fmt.Sprintf("Device is offline. Moving it to a resolved decommission status so a scanner can confirm\nPROOF:\n%s", detection.Proof()), sord(ticket.AssignedTo()))
+			if err != nil {
+				scanClose.lstream.Send(log.Errorf(err, "error while adding comment to ticket %s", ticket.Title()))
 			}
 		}
 
@@ -292,9 +350,12 @@ func (scanClose *ScanCloseJob) openTicket(tix domain.Ticket, vuln domain.Detecti
 	// Still Exists
 	var comment string
 	if scanClose.Payload.Type == domain.RescanDecommission {
-		comment = fmt.Sprintf("Host appears to be alive according to scan [%s]", sord(scan.SourceKey()))
+		comment = fmt.Sprintf("Host is alive according to scan [%s]", sord(scan.SourceKey()))
 	} else {
-		comment = fmt.Sprintf("%s\n\nPROOF:\n%s\n\nScan Id [Id: %v]", reopenComment, removeHTMLTags(vuln.Proof()), sord(scan.SourceKey()))
+
+		if len(comment) == 0 {
+			comment = fmt.Sprintf("%s\n\nPROOF:\n%s\n\nScan Id [Id: %v]", reopenComment, removeHTMLTags(vuln.Proof()), sord(scan.SourceKey()))
+		}
 	}
 
 	scanClose.lstream.Send(log.Debugf("TRANSITIONING Ticket [%s]", tix.Title()))

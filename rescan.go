@@ -74,10 +74,20 @@ func (job *RescanJob) Process(ctx context.Context, id string, appconfig domain.C
 				var tickets []domain.Ticket
 				if tickets, err = loadTickets(job.lstream, ticketing, job.Payload.Tickets); err == nil {
 					job.lstream.Send(log.Infof("Tickets Loaded [%s]", strings.Join(job.Payload.Tickets, ",")))
-					err = job.createAndMonitorScan(ticketToMatch(tickets, job.Payload.Group))
-					if err != nil {
-						job.lstream.Send(log.Errorf(err, "error while creating scan"))
+
+					const batchSize = 400
+					for i := 0; i < len(tickets); i += batchSize {
+						if i+batchSize <= len(tickets) {
+							err = job.createAndMonitorScan(ticketToMatch(tickets[i:i+batchSize], job.Payload.Group), getTicketTitles(tickets[i:i+batchSize]))
+						} else {
+							err = job.createAndMonitorScan(ticketToMatch(tickets[i:], job.Payload.Group), getTicketTitles(tickets[i:]))
+						}
+
+						if err != nil {
+							job.lstream.Send(log.Errorf(err, "error while creating scan"))
+						}
 					}
+
 				} else {
 					job.lstream.Send(log.Errorf(err, "Error while loading tickets from JIRA"))
 				}
@@ -94,15 +104,25 @@ func (job *RescanJob) Process(ctx context.Context, id string, appconfig domain.C
 	return err
 }
 
+func getTicketTitles(tickets []domain.Ticket) (titles []string) {
+	titles = make([]string, 0)
+
+	for _, ticket := range tickets {
+		titles = append(titles, ticket.Title())
+	}
+
+	return titles
+}
+
 // creates a connection to the scanning engine in order to create a scan for the ips and vulnerabilities
 // after the scan is created, the method monitors the status of the scan in the database and does not end
 // until the scan leaves the queued status
-func (job *RescanJob) createAndMonitorScan(matches []domain.Match) (err error) {
+func (job *RescanJob) createAndMonitorScan(matches []domain.Match, tickets []string) (err error) {
 	// Initialize scanner object
 	var vscanner integrations.Vscanner
 	if vscanner, err = integrations.NewVulnScanner(job.ctx, job.inSource.Source(), job.db, job.lstream, job.appConfig, job.inSource); err == nil {
 
-		job.lstream.Send(log.Debugf("Scanning Engine Connection Initialized. Loading Tickets [%s]", strings.Join(job.Payload.Tickets, ",")))
+		job.lstream.Send(log.Debugf("Scanning Engine Connection Initialized. Loading Tickets [%s]", strings.Join(tickets, ",")))
 
 		var scans <-chan domain.Scan
 
@@ -121,10 +141,10 @@ func (job *RescanJob) createAndMonitorScan(matches []domain.Match) (err error) {
 						return
 					case scan, ok := <-scans:
 						if ok {
-							job.lstream.Send(log.Infof("New scan created [ID: %v] for [%v] tickets", scan.ID(), len(job.Payload.Tickets)))
+							job.lstream.Send(log.Infof("New scan created [ID: %v] for [%v] tickets", scan.ID(), len(matches)))
 
 							// to be used in the Payload for the scan summary
-							scanClosePayload := job.createScanClosePayload(scan, matches)
+							scanClosePayload := job.createScanClosePayload(scan, matches, tickets)
 
 							var bytePayload []byte
 							bytePayload, err = json.Marshal(scanClosePayload)
@@ -134,6 +154,7 @@ func (job *RescanJob) createAndMonitorScan(matches []domain.Match) (err error) {
 								// Log the scan Id in the database for monitoring by the scan sync this
 								if _, _, err = job.db.CreateScanSummary(
 									job.inSource.SourceID(),
+									job.inSource.ID(),
 									job.config.OrganizationID(),
 									scan.ID(),
 									domain.ScanQUEUED,
@@ -199,7 +220,7 @@ func (job *RescanJob) loadIPAddressesAndVulnerabilitiesFromTickets(tickets []dom
 	return ipAddresses, vulnerabilities, err
 }
 
-func (job *RescanJob) createScanClosePayload(scan domain.Scan, matches []domain.Match) *ScanClosePayload {
+func (job *RescanJob) createScanClosePayload(scan domain.Scan, matches []domain.Match, tickets []string) *ScanClosePayload {
 	var devices = make([]string, 0)
 	for _, match := range matches {
 		devices = append(devices, match.IP())
@@ -208,7 +229,7 @@ func (job *RescanJob) createScanClosePayload(scan domain.Scan, matches []domain.
 	scanClosePayload := &ScanClosePayload{}
 	scanClosePayload.Scan = scan
 	scanClosePayload.ScanID = scan.ID()
-	scanClosePayload.Tickets = job.Payload.Tickets
+	scanClosePayload.Tickets = tickets
 	scanClosePayload.Devices = devices
 	scanClosePayload.Group = job.Payload.Group
 	scanClosePayload.Type = job.Payload.Type
@@ -264,7 +285,7 @@ func (m matchTicket) Device() string {
 
 // Vulnerability returns the vulnerability ID contained within the ticket
 func (m matchTicket) Vulnerability() string {
-	return m.t.VulnerabilityID()
+	return strings.Split(m.t.VulnerabilityID(), domain.VulnPathConcatenator)[0]
 }
 
 // GroupID returns the group that the ticket belongs to. This is used to create the scan within the scanning engine

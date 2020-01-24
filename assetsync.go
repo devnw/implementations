@@ -20,6 +20,9 @@ type AssetSyncJob struct {
 	// the detection status must be queried for each detection, so we cache them
 	detectionStatuses []domain.DetectionStatus
 
+	// the vuln cache maps the vulnerability ID to the vulnerability information in the database
+	vulnCache sync.Map
+
 	id          string
 	payloadJSON string
 	ctx         context.Context
@@ -72,6 +75,12 @@ func (job *AssetSyncJob) Process(ctx context.Context, id string, appconfig domai
 
 					for _, groupID := range job.Payload.GroupIDs {
 						if err = job.createAssetGroupInDB(groupID, job.insources.SourceID()); err == nil {
+							select {
+							case <-job.ctx.Done():
+								return
+							default:
+							}
+
 							job.lstream.Send(log.Infof("started processing %v", groupID))
 							job.processGroup(vscanner, groupID)
 							job.lstream.Send(log.Infof("finished processing %v", groupID))
@@ -95,91 +104,112 @@ func (job *AssetSyncJob) Process(ctx context.Context, id string, appconfig domai
 	return err
 }
 
+func (job *AssetSyncJob) fanInDetections(in <-chan domain.Detection) (devIDToDetection map[string][]domain.Detection) {
+	devIDToDetection = make(map[string][]domain.Detection)
+
+	for {
+		select {
+		case <-job.ctx.Done():
+			return
+		case detection, ok := <-in:
+			if ok {
+
+				if device, err := detection.Device(); err == nil && device != nil {
+					if devIDToDetection[sord(device.SourceID())] == nil {
+						devIDToDetection[sord(device.SourceID())] = make([]domain.Detection, 0)
+					}
+					devIDToDetection[sord(device.SourceID())] = append(devIDToDetection[sord(device.SourceID())], detection)
+				} else {
+					job.lstream.Send(log.Errorf(err, "error while loading device"))
+				}
+
+			} else {
+				return devIDToDetection
+			}
+		}
+	}
+}
+
 // This method is responsible for gathering the assets of the group, as well as kicking off the threads that process each asset
 func (job *AssetSyncJob) processGroup(vscanner integrations.Vscanner, groupID int) {
 	var groupIDString = strconv.Itoa(groupID)
 
 	// gather the asset information
-	devVulnChan, err := vscanner.Detections(job.ctx, []string{groupIDString})
+	detectionChan, err := vscanner.Detections(job.ctx, []string{groupIDString})
 	if err == nil {
 
-		var comboWg = &sync.WaitGroup{}
-		var deviceMap sync.Map
+		devIDToDetections := job.fanInDetections(detectionChan)
+		job.lstream.Send(log.Infof("Finished loading detections for %d devices", len(devIDToDetections)))
 
-		index := 0
-
-		for {
-			if devVulnCombo, ok := <-devVulnChan; ok {
-
-				index++
-				if index%100 == 0 {
-					comboWg.Wait()
-				}
-
-				if asset, err := devVulnCombo.Device(); err == nil {
-
-					var deviceID = sord(asset.SourceID())
-					if len(deviceID) > 0 {
-
-						ctx, cancel := context.WithCancel(context.Background())
-						deviceCtxInt, loaded := deviceMap.LoadOrStore(deviceID, ctx)
-						firstTimeWithDevice := !loaded
-
-						if firstTimeWithDevice {
-							comboWg.Add(1)
-							go func(deviceID string, asset domain.Device, devVulnCombo domain.Detection, cancel context.CancelFunc) {
-								defer comboWg.Done()
-								defer handleRoutinePanic(job.lstream)
-
-								err = job.addDeviceInformationToDB(asset, groupID)
-								if err != nil {
-									job.lstream.Send(log.Errorf(err, "error while adding asset information to the database"))
-								}
-								cancel()
-							}(deviceID, asset, devVulnCombo, cancel)
-						}
-
-						if deviceCtx, ok := deviceCtxInt.(context.Context); ok {
-							comboWg.Add(1)
-							go func(deviceID string, asset domain.Device, devVulnCombo domain.Detection, deviceCtx context.Context) {
-								defer comboWg.Done()
-								defer handleRoutinePanic(job.lstream)
-
-								<-deviceCtx.Done()
-								job.processAsset(deviceID, asset, devVulnCombo, groupID)
-							}(deviceID, asset, devVulnCombo, deviceCtx)
-						} else {
-							job.lstream.Send(log.Error("context failed to load from sync map", err))
-						}
-					} else {
-						job.lstream.Send(log.Error("device passed with id 0", err))
-					}
-
-				} else {
-					job.lstream.Send(log.Errorf(err, "error while gathering asset information"))
-				}
-
-			} else {
-				break
-			}
+		const simultaneousCount = 10
+		var permitThread = make(chan bool, simultaneousCount)
+		for i := 0; i < simultaneousCount; i++ {
+			permitThread <- true
 		}
 
-		comboWg.Wait()
+		var wg sync.WaitGroup
+		for deviceID, detections := range devIDToDetections {
+			select {
+			case <-job.ctx.Done():
+				return
+			case <-permitThread:
+
+				wg.Add(1)
+				go func(deviceID string, detections []domain.Detection) {
+					defer wg.Done()
+					defer func() {
+						permitThread <- true
+					}()
+
+					if len(detections) > 0 {
+
+						job.lstream.Send(log.Infof("Working on %d detections for %s", len(detections), deviceID))
+
+						if asset, err := detections[0].Device(); err == nil {
+							err = job.addDeviceInformationToDB(asset, groupID)
+							if err == nil {
+								job.processAsset(deviceID, asset, detections, groupID)
+							} else {
+								job.lstream.Send(log.Errorf(err, "error while adding asset information to the database"))
+							}
+						} else {
+							job.lstream.Send(log.Errorf(err, "error while loading device information for %s", deviceID))
+						}
+					}
+				}(deviceID, detections)
+			}
+		}
+		wg.Wait()
 	} else {
 		job.lstream.Send(log.Error("error while grabbing device and vulnerability information", err))
 	}
 }
 
 // Only process the asset if it has not been processed by another group
-func (job *AssetSyncJob) processAsset(deviceID string, asset domain.Device, devVulnCombo domain.Detection, groupID int) {
+func (job *AssetSyncJob) processAsset(deviceID string, asset domain.Device, detections []domain.Detection, groupID int) {
 	var err error
 
 	if len(sord(asset.SourceID())) > 0 {
 		var existingDeviceInDb domain.Device
 		if existingDeviceInDb, err = job.db.GetDeviceByAssetOrgID(sord(asset.SourceID()), job.config.OrganizationID()); err == nil && existingDeviceInDb != nil {
 
-			if devVulnCombo != nil {
-				_ = job.processAssetDetections(existingDeviceInDb, sord(asset.SourceID()), devVulnCombo)
+			if detections != nil {
+
+				var wg sync.WaitGroup
+				for _, detection := range detections {
+
+					wg.Add(1)
+					go func(detection domain.Detection) {
+						defer wg.Done()
+
+						if detection != nil {
+							_ = job.processAssetDetections(existingDeviceInDb, sord(asset.SourceID()), detection)
+						} else {
+							job.lstream.Send(log.Errorf(err, "nil detection found for", sord(asset.SourceID())))
+						}
+					}(detection)
+				}
+				wg.Wait()
 			} else {
 				job.lstream.Send(log.Errorf(err, "error while processing asset information in database"))
 			}
@@ -297,18 +327,20 @@ func (job *AssetSyncJob) processAssetDetections(deviceInDb domain.Device, assetI
 	vulnID := strings.Split(vuln.VulnerabilityID(), ";")[0]
 
 	var vulnInfo domain.VulnerabilityInfo
-	vulnInfo, err = job.db.GetVulnInfoBySourceVulnID(vulnID)
+	if vulnInfoInterface, ok := job.vulnCache.Load(vulnID); ok {
+		if vulnInfo, ok = vulnInfoInterface.(domain.VulnerabilityInfo); !ok {
+			err = fmt.Errorf("cache error while loading vulnerability info")
+		}
+	} else {
+		vulnInfo, err = job.db.GetVulnInfoBySourceVulnID(vulnID)
+		if err == nil && vulnInfo != nil {
+			job.vulnCache.Store(vulnID, vulnInfo)
+		}
+	}
+
 	if err == nil {
-
 		if vulnInfo != nil {
-
-			var exception domain.Ignore
-			if exception, err = job.db.GetExceptionByVulnIDOrg(assetID, vulnInfo.SourceVulnID(), job.config.OrganizationID()); err == nil {
-				job.createOrUpdateDetection(exception, deviceInDb, vulnInfo, vuln, assetID)
-			} else {
-				job.lstream.Send(log.Errorf(err, "Error while exceptions device [%v]", assetID))
-			}
-
+			job.createOrUpdateDetection(deviceInDb, vulnInfo, vuln, assetID)
 		} else {
 			job.lstream.Send(log.Error("could not find vulnerability in database", fmt.Errorf("[%s] does not have an entry in the database", vulnID)))
 		}
@@ -320,38 +352,59 @@ func (job *AssetSyncJob) processAssetDetections(deviceInDb domain.Device, assetI
 	return err
 }
 
-// This method creates a detection entry if one does not exist, and updates the entry if one does
-func (job *AssetSyncJob) createOrUpdateDetection(exception domain.Ignore, deviceInDb domain.Device, vulnInfo domain.VulnerabilityInfo, vuln domain.Detection, assetID string) {
-	var err error
-
-	var exceptionID string
-	if exception != nil {
-		exceptionID = exception.ID()
+func (job *AssetSyncJob) getExceptionID(assetID string, vulnInfo domain.VulnerabilityInfo) (exceptionID string) {
+	if exception, err := job.db.GetExceptionByVulnIDOrg(assetID, vulnInfo.SourceVulnID(), job.config.OrganizationID()); err == nil {
+		if exception != nil {
+			exceptionID = exception.ID()
+		}
+	} else {
+		job.lstream.Send(log.Errorf(err, "Error while gathering exceptions for device [%v]", assetID))
 	}
 
-	var detection domain.Detection
-	detection, err = job.db.GetDetection(sord(deviceInDb.SourceID()), vulnInfo.ID())
+	return exceptionID
+}
+
+// This method creates a detection entry if one does not exist, and updates the entry if one does
+func (job *AssetSyncJob) createOrUpdateDetection(deviceInDb domain.Device, vulnInfo domain.VulnerabilityInfo, detectionFromScanner domain.Detection, assetID string) {
+	var err error
+
+	var detectionInDB domain.Detection
+	detectionInDB, err = job.db.GetDetection(sord(deviceInDb.SourceID()), vulnInfo.ID())
 	if err == nil {
 		var detectionStatus domain.DetectionStatus
-		if detectionStatus = job.getDetectionStatus(vuln.Status()); detectionStatus != nil {
-			if detection == nil {
-				job.createDetection(vuln, exceptionID, deviceInDb, vulnInfo, assetID, detectionStatus.ID())
-			} else {
-				_, _, err = job.db.UpdateDetectionTimesSeen(
-					sord(deviceInDb.SourceID()),
-					vulnInfo.ID(),
-					vuln.TimesSeen(),
-					detectionStatus.ID(),
-				)
+		if detectionStatus = job.getDetectionStatus(detectionFromScanner.Status()); detectionStatus != nil {
 
-				if err == nil {
-					job.lstream.Send(log.Infof("Updated detection for device/vuln [%v|%v]", assetID, vulnInfo.ID()))
+			if detectionInDB == nil {
+				job.createDetection(detectionFromScanner, job.getExceptionID(assetID, vulnInfo), deviceInDb, vulnInfo, assetID, detectionStatus.ID())
+			} else {
+
+				var canSkipUpdate bool
+				if !detectionInDB.Updated().IsZero() && !detectionFromScanner.Updated().IsZero() {
+					if detectionInDB.Updated().After(detectionFromScanner.Updated()) {
+						canSkipUpdate = true
+					}
+				}
+
+				if !canSkipUpdate {
+					_, _, err = job.db.UpdateDetectionTimesSeen(
+						sord(deviceInDb.SourceID()),
+						vulnInfo.ID(),
+						job.getExceptionID(assetID, vulnInfo),
+						detectionFromScanner.TimesSeen(),
+						detectionStatus.ID(),
+					)
+
+					if err == nil {
+						job.lstream.Send(log.Infof("Updated detection for device/vuln [%v|%v]", assetID, vulnInfo.ID()))
+					} else {
+						job.lstream.Send(log.Errorf(err, "Error while updating detection for device/vuln [%v|%v]", assetID, vulnInfo.ID()))
+					}
 				} else {
-					job.lstream.Send(log.Errorf(err, "Error while updating detection for device/vuln [%v|%v]", assetID, vulnInfo.ID()))
+					job.lstream.Send(log.Infof("Skipping detection update for device/vuln [%v|%v] [%v after %v]", assetID, vulnInfo.ID(), detectionInDB.Updated(), detectionFromScanner.Updated()))
 				}
 			}
 		} else {
-			job.lstream.Send(log.Errorf(err, "could not find detection status with name [%s]", vuln.Status()))
+			job.lstream.Send(log.Errorf(err, "could not find detection status with name [%s]", detectionFromScanner.Status()))
 		}
 	} else {
 		job.lstream.Send(log.Debugf("Detection already exists for device/vuln [%v|%v]", assetID, vulnInfo.ID()))
