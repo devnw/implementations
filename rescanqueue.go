@@ -136,6 +136,10 @@ func (job *RescanQueueJob) processCleanedIssues(issues <-chan domain.Ticket) {
 	var assetGroupBelongsToThisOrgAndScanner map[int]bool
 	var err error
 	assetGroupBelongsToThisOrgAndScanner, err = job.getAssetGroups()
+	if err != nil {
+		job.lstream.Send(log.Errorf(err, "error while loading asset groups"))
+		return
+	}
 
 	var dbWG sync.WaitGroup
 	func() {
