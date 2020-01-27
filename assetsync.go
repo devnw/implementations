@@ -74,7 +74,7 @@ func (job *AssetSyncJob) Process(ctx context.Context, id string, appconfig domai
 					job.lstream.Send(log.Debug("Scanner connection created, beginning processing..."))
 
 					for _, groupID := range job.Payload.GroupIDs {
-						if err = job.createAssetGroupInDB(groupID, job.insources.SourceID()); err == nil {
+						if err = job.createAssetGroupInDB(groupID, job.insources.SourceID(), job.insources.ID()); err == nil {
 							select {
 							case <-job.ctx.Done():
 								return
@@ -527,11 +527,11 @@ func (job *AssetSyncJob) grabAndCreateOsType(operatingSystem string) (output dom
 	return output, err
 }
 
-func (job *AssetSyncJob) createAssetGroupInDB(groupID int, sourceID string) (err error) {
+func (job *AssetSyncJob) createAssetGroupInDB(groupID int, scannerSourceID string, scannerSourceConfigID string) (err error) {
 	var assetGroup domain.AssetGroup
-	if assetGroup, err = job.db.GetAssetGroup(job.config.OrganizationID(), groupID, sourceID); err == nil {
+	if assetGroup, err = job.db.GetAssetGroup(job.config.OrganizationID(), groupID, scannerSourceConfigID); err == nil {
 		if assetGroup == nil {
-			if _, _, err = job.db.CreateAssetGroup(job.config.OrganizationID(), groupID, sourceID); err == nil {
+			if _, _, err = job.db.CreateAssetGroup(job.config.OrganizationID(), groupID, scannerSourceID, scannerSourceConfigID); err == nil {
 
 			} else {
 				err = fmt.Errorf("error while creating asset group - %v", err.Error())

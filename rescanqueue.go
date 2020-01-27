@@ -116,10 +116,28 @@ func (job *RescanQueueJob) Process(ctx context.Context, id string, appconfig dom
 	return err
 }
 
+func (job *RescanQueueJob) getAssetGroups() (assetGroupBelongsToThisOrgAndScanner map[int]bool, err error) {
+	assetGroupBelongsToThisOrgAndScanner = make(map[int]bool)
+
+	var assetGroups []domain.AssetGroup
+	if assetGroups, err = job.db.GetAssetGroupForOrg(job.outsource.ID(), job.config.OrganizationID()); err == nil {
+		for _, assetGroup := range assetGroups {
+			assetGroupBelongsToThisOrgAndScanner[assetGroup.GroupID()] = true
+		}
+	} else {
+		err = fmt.Errorf("error while loading asset groups - %s", err.Error())
+	}
+
+	return assetGroupBelongsToThisOrgAndScanner, err
+}
+
 func (job *RescanQueueJob) processCleanedIssues(issues <-chan domain.Ticket) {
 	var groupIDToTickets = make(map[string][]domain.Ticket)
-	var dbWG sync.WaitGroup
+	var assetGroupBelongsToThisOrgAndScanner map[int]bool
+	var err error
+	assetGroupBelongsToThisOrgAndScanner, err = job.getAssetGroups()
 
+	var dbWG sync.WaitGroup
 	func() {
 		for {
 			select {
@@ -139,11 +157,18 @@ func (job *RescanQueueJob) processCleanedIssues(issues <-chan domain.Ticket) {
 								if deviceInfo.GroupID() != nil {
 
 									groupID := strconv.Itoa(*deviceInfo.GroupID())
-									if groupIDToTickets[groupID] == nil {
-										groupIDToTickets[groupID] = make([]domain.Ticket, 0)
+
+									if assetGroupBelongsToThisOrgAndScanner[*deviceInfo.GroupID()] {
+										if groupIDToTickets[groupID] == nil {
+											groupIDToTickets[groupID] = make([]domain.Ticket, 0)
+										}
+
+										groupIDToTickets[groupID] = append(groupIDToTickets[groupID], ticket)
+									} else {
+										job.lstream.Send(log.Info(fmt.Sprintf("Skipping %s because it belongs to group %s which does not belong to the org/scanner souce config [%s|%s]",
+											ticket.Title(), groupID, job.config.OrganizationID(), job.outsource.ID())))
 									}
 
-									groupIDToTickets[groupID] = append(groupIDToTickets[groupID], ticket)
 								} else {
 									job.lstream.Send(log.Errorf(err, "no group ID found for device info with ID %s in Org %s", ticket.DeviceID(), job.config.OrganizationID()))
 								}

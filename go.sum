@@ -50,6 +50,8 @@ github.com/aws/aws-sdk-go v1.28.9 h1:grIuBQc+p3dTRXerh5+2OxSuWFi0iXuxbFdTSg0jaW0
 github.com/aws/aws-sdk-go v1.28.9/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/benjivesterby/validator v1.0.0 h1:tH7Nmf9jTTyOUVxFDof71EbsBDYBAEkoKFF90m/7mnE=
 github.com/benjivesterby/validator v1.0.0/go.mod h1:Z+2cejivNzuwe6GpnMfhRee5HUWzNCZgiKZCVpJEkAo=
+github.com/benjivesterby/validator v1.0.1-0.20200101181545-cfd93a3612a2 h1:PESKLfNPoFDZbuwraQzmjFuCs9MaGDeoS9ANpFl4ppU=
+github.com/benjivesterby/validator v1.0.1-0.20200101181545-cfd93a3612a2/go.mod h1:Z+2cejivNzuwe6GpnMfhRee5HUWzNCZgiKZCVpJEkAo=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dghubble/oauth1 v0.6.0 h1:m1yC01Ohc/eF38jwZ8JUjL1a+XHHXtGQgK+MxQbmSx0=
 github.com/dghubble/oauth1 v0.6.0/go.mod h1:8pFdfPkv/jr8mkChVbNVuJ0suiHe278BtWI4Tk1ujxk=
@@ -83,6 +85,8 @@ github.com/nortonlifelock/aws v1.0.0 h1:O5FBsbkZJFV+0vR3Cf9KMeWYME4HdUH/JuP+pnCj
 github.com/nortonlifelock/aws v1.0.0/go.mod h1:aL7fXkwkl4AiJOoY393+wBa/+fIkpIknbbQj/TwcQvE=
 github.com/nortonlifelock/azure v1.0.0 h1:1i8UM4IaEO6laVfmJDtjsH5fWdw8q/1soVmbD0HMtHA=
 github.com/nortonlifelock/azure v1.0.0/go.mod h1:LlEh2URp6SnMAofV2gfQQ4hbyHIBHFj1kTt5sSGgzyo=
+github.com/nortonlifelock/azure v1.0.1-0.20200127180045-bed3edc24747 h1:m7fzFhSL6hHwQXdFPmWCxSymuD8QbjyU4nh7Wn19PXo=
+github.com/nortonlifelock/azure v1.0.1-0.20200127180045-bed3edc24747/go.mod h1:hRxpHJca8syuW8CEz1w7lRXVah8by8HNamacwGlxp3k=
 github.com/nortonlifelock/config v1.0.0/go.mod h1:xDBunuC9e1QXxCIM5ZxU7npUXHOaXYDASKGlksgXe84=
 github.com/nortonlifelock/connection v1.0.0 h1:qtUPEZ3RPb1uGb0ityKJsviJ7FLVhzb0AhvaxtVPSV0=
 github.com/nortonlifelock/connection v1.0.0/go.mod h1:D3AcK+pIIFPt/hKhjuEkhkCRaSYelwSYmw8cKqmba/0=
@@ -96,6 +100,8 @@ github.com/nortonlifelock/domain v1.0.0 h1:U0sSI7nonNHIkneroyU/4M2kNxgM9LUsCoSok
 github.com/nortonlifelock/domain v1.0.0/go.mod h1:K3X+mz2P0Cx9bOob3jzqDCXM8UmAv4HKqrMUqFCOuh4=
 github.com/nortonlifelock/domain v1.0.1-0.20200127165419-481d9e56f9ae h1:FJqwS3LXXjhy9g3fyY4nA3qXxhXe8nJXJqdvdZPHbq8=
 github.com/nortonlifelock/domain v1.0.1-0.20200127165419-481d9e56f9ae/go.mod h1:HnL3BIG/tzGDi0F4N1ncI5r3Mxrm9MzEQ196bHGOFJM=
+github.com/nortonlifelock/domain v1.0.1-0.20200127211249-fc2633dfea5f h1:iGf+wU2VXtVasQLowj1wKJD/Jw5w7CuU6VGF4ZTfCnY=
+github.com/nortonlifelock/domain v1.0.1-0.20200127211249-fc2633dfea5f/go.mod h1:znFyCnzgKqtnNcBVQ8XHKyPxMsMR7QDkyAApQ58Avuo=
 github.com/nortonlifelock/dome9 v1.0.0 h1:YtnBerL5djePwj/ufSunuLfgeL6owDlwxFNLYrkYw0Y=
 github.com/nortonlifelock/dome9 v1.0.0/go.mod h1:0c1bsMWR0hkuOBv2aKdhRPkJiyVCj6VQhB22/reZuCo=
 github.com/nortonlifelock/files v1.0.0 h1:AKhTO0ozZsznao9tgrDbNkjaILPFadyBqWIKqSK4ylg=
@@ -124,8 +130,12 @@ github.com/nortonlifelock/log v1.0.1-0.20200127165507-0a6906836276 h1:kGvLm4/Em3
 github.com/nortonlifelock/log v1.0.1-0.20200127165507-0a6906836276/go.mod h1:52OjXRnubIjJZrQWYFjYV8/YIR2BhPPAWN0Kbnkh/Jw=
 github.com/nortonlifelock/nexpose v1.0.0 h1:3de+p6We44O5KAy8TEqXFJjn1UU+IdtZeZsVgETwZqY=
 github.com/nortonlifelock/nexpose v1.0.0/go.mod h1:pwPywPaKMxS3jCjN8HYS1Z4u/X2tqv8nDRlP7fWMFaM=
+github.com/nortonlifelock/nexpose v1.0.1-0.20200127180156-5a974d158c2e h1:axC2DrozRavOoc5RZXm3fCcSPUKh5OWz1+dqe0MpSAA=
+github.com/nortonlifelock/nexpose v1.0.1-0.20200127180156-5a974d158c2e/go.mod h1:aurFSIEAFPgHHzv2cg/AOq8d08Vdtkzd25AUD3M0cyg=
 github.com/nortonlifelock/qualys v1.0.0 h1:OHQI3OfukZTsKqqBYleFF/+iIvsOT5WE1YUh+8XfJrU=
 github.com/nortonlifelock/qualys v1.0.0/go.mod h1:cK/XqLm8126rJUps+dI7qR4gpciMIQDfmpA0vyhQFGo=
+github.com/nortonlifelock/qualys v1.0.1-0.20200127180159-b1c4243c9e09 h1:5pOyDzW2mVtYeTVB47DZzOxyDul/b13Sqf9On1EuTU0=
+github.com/nortonlifelock/qualys v1.0.1-0.20200127180159-b1c4243c9e09/go.mod h1:vSccSglfYBSHQ+2m5SOsatyPquG1gUg7gqbF5WG0/IU=
 github.com/nortonlifelock/scaffold v1.0.0 h1:jAIckDn+Z2BDseLZXYKh9lKQzjoWR2n94qjNaqFbLtg=
 github.com/nortonlifelock/scaffold v1.0.0/go.mod h1:RxJxihMAsdAgc58UUBrJT2T7gcyjBJYMPMkftcOs2fQ=
 github.com/nortonlifelock/scaffold v1.0.1-0.20200127165521-bf78a33de233 h1:TRPZg2hXfe8CHYObgFFdBn8UFuOqKlsEY2hqzZUlN0I=
