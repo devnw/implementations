@@ -894,6 +894,8 @@ func (job *TicketingJob) createIndividualTicket(payload *vulnerabilityPayload) {
 				job.config.OrganizationID(),
 				tord(payload.ticket.DueDate()),
 				time.Now(),
+				tord1970(payload.ticket.ResolutionDate()),
+				tord1970(nil), // used to set the resolution date to nil in the DB if the ticket doesn't have one
 			)
 
 			if err != nil {

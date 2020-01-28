@@ -98,6 +98,8 @@ github.com/nortonlifelock/database v1.0.1-0.20200127165415-81ae2e166726 h1:JGjl7
 github.com/nortonlifelock/database v1.0.1-0.20200127165415-81ae2e166726/go.mod h1:NGRpA/lp2WrDK7AP7cGMe3EGWgAezTncHrXD8U3SH6s=
 github.com/nortonlifelock/database v1.0.1-0.20200127211231-9881cd58fcd5 h1:0wrAfYv0f/qOVOPQsKST8FxpSqQer41E7gyN/2dGqus=
 github.com/nortonlifelock/database v1.0.1-0.20200127211231-9881cd58fcd5/go.mod h1:28uaZkUHYqYAFi/gdvRiqrDe9be3dO2AeofLK4CwYjc=
+github.com/nortonlifelock/database v1.0.1-0.20200128204510-e51fe596f521 h1:UnXZamfYVKmEk+gDD2+XdoDgcI/jxzqKh/aEDrM/xM8=
+github.com/nortonlifelock/database v1.0.1-0.20200128204510-e51fe596f521/go.mod h1:EBWNm2ErmNZPJQ3BXXdjs90t+BNXkunhUJUeLRs7+Xs=
 github.com/nortonlifelock/domain v1.0.0 h1:U0sSI7nonNHIkneroyU/4M2kNxgM9LUsCoSokKdu5/U=
 github.com/nortonlifelock/domain v1.0.0/go.mod h1:K3X+mz2P0Cx9bOob3jzqDCXM8UmAv4HKqrMUqFCOuh4=
 github.com/nortonlifelock/domain v1.0.1-0.20200127165419-481d9e56f9ae h1:FJqwS3LXXjhy9g3fyY4nA3qXxhXe8nJXJqdvdZPHbq8=
@@ -106,6 +108,8 @@ github.com/nortonlifelock/domain v1.0.1-0.20200127211249-fc2633dfea5f h1:iGf+wU2
 github.com/nortonlifelock/domain v1.0.1-0.20200127211249-fc2633dfea5f/go.mod h1:znFyCnzgKqtnNcBVQ8XHKyPxMsMR7QDkyAApQ58Avuo=
 github.com/nortonlifelock/domain v1.0.1-0.20200128200039-db37f0c6cf19 h1:B9EzpLq3Cao87M/yW25UequkmKZz+V2iPy11E7CbS9o=
 github.com/nortonlifelock/domain v1.0.1-0.20200128200039-db37f0c6cf19/go.mod h1:znFyCnzgKqtnNcBVQ8XHKyPxMsMR7QDkyAApQ58Avuo=
+github.com/nortonlifelock/domain v1.0.1-0.20200128200642-4d2fc9a8a17d h1:pUok4BSDpJne9/166XckPu4VoLta5hK7TE+xUwUJ1cg=
+github.com/nortonlifelock/domain v1.0.1-0.20200128200642-4d2fc9a8a17d/go.mod h1:znFyCnzgKqtnNcBVQ8XHKyPxMsMR7QDkyAApQ58Avuo=
 github.com/nortonlifelock/dome9 v1.0.0 h1:YtnBerL5djePwj/ufSunuLfgeL6owDlwxFNLYrkYw0Y=
 github.com/nortonlifelock/dome9 v1.0.0/go.mod h1:0c1bsMWR0hkuOBv2aKdhRPkJiyVCj6VQhB22/reZuCo=
 github.com/nortonlifelock/files v1.0.0 h1:AKhTO0ozZsznao9tgrDbNkjaILPFadyBqWIKqSK4ylg=
@@ -165,6 +169,8 @@ golang.org/x/crypto v0.0.0-20191219195013-becbf705a915 h1:aJ0ex187qoXrJHPo8ZasVT
 golang.org/x/crypto v0.0.0-20191219195013-becbf705a915/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20200117160349-530e935923ad h1:Jh8cai0fqIK+f6nG0UgPW5wFk8wmiMhM3AyciDBdtQg=
 golang.org/x/crypto v0.0.0-20200117160349-530e935923ad/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
+golang.org/x/crypto v0.0.0-20200128174031-69ecbb4d6d5d h1:9FCpayM9Egr1baVnV1SX0H87m+XB0B8S0hAMi99X/3U=
+golang.org/x/crypto v0.0.0-20200128174031-69ecbb4d6d5d/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/net v0.0.0-20180218175443-cbe0f9307d01/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/net v0.0.0-20181114220301-adae6a3d119a/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3 h1:0GoQqolDA55aaLxZyTzK/Y2ePZzZTUrRacwib7cNsYQ=
