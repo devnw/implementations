@@ -6,8 +6,8 @@ require (
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/gorilla/websocket v1.4.1
 	github.com/nortonlifelock/azure v1.0.1-0.20200127180045-bed3edc24747 // indirect
-	github.com/nortonlifelock/database v1.0.1-0.20200127165415-81ae2e166726
-	github.com/nortonlifelock/domain v1.0.1-0.20200127211249-fc2633dfea5f
+	github.com/nortonlifelock/database v1.0.1-0.20200127211231-9881cd58fcd5
+	github.com/nortonlifelock/domain v1.0.1-0.20200128200039-db37f0c6cf19
 	github.com/nortonlifelock/files v1.0.1-0.20200127165427-5178f1323f54
 	github.com/nortonlifelock/integrations v1.0.1-0.20200127165438-9631cf499858
 	github.com/nortonlifelock/jira v1.0.1-0.20200127165441-9aebd62c04d9
